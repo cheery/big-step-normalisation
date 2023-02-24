@@ -42,10 +42,9 @@ El x [ s ]TyS = El (subst (Tm _ _) U[] (x [ s ]))
 --L A [ s ]TyS = L (A [ s ]TyS)
 Pi A B [ s ]TyS = Pi (A [ s ]TyS) (subst (λ i → TyS _ (_ , i)) (sym ⌜[]TyS⌝) (B [ s ↑ ⌜ A ⌝TyS ]TyS))
 
-abstract
-  ⌜[]TyS⌝ {X = X} {Y = Y} {A = U n} {s = s} = sym U[]
-  ⌜[]TyS⌝ {X = X} {Y = Y} {A = El u} {s = s} = sym El[]
-  ⌜[]TyS⌝ {X = X} {Y = Y} {A = Pi A B} {s = s} = hmerge P
+⌜[]TyS⌝ {X = X} {Y = Y} {A = U n} {s = s} = sym U[]
+⌜[]TyS⌝ {X = X} {Y = Y} {A = El u} {s = s} = sym El[]
+⌜[]TyS⌝ {X = X} {Y = Y} {A = Pi A B} {s = s} = hmerge P
     where P : Pi ⌜ A [ s ]TyS ⌝TyS ⌜ subst (λ i → TyS _ (X , i)) (sym ⌜[]TyS⌝) (B [ s ↑ ⌜ A ⌝TyS ]TyS) ⌝TyS
               ⟦ Ty _ ⟧
               (Pi ⌜ A ⌝TyS ⌜ B ⌝TyS [ s ]T)
@@ -57,6 +56,7 @@ abstract
               ⟮ ‼ sym Pi[] ⟯
               Pi ⌜ A ⌝TyS ⌜ B ⌝TyS [ s ]T □
 
+abstract
   TyS[id] : {X : Con} {A : TyS n X} → A [ idt ]TyS ≡ A
   TyS[id] {X = X} {U n} = refl
   TyS[id] {X = X} {El u} = cong TyS.El (hmerge P)

@@ -5,4 +5,4 @@ and ["Big Step Normalisation for Type Theory"](https://drops.dagstuhl.de/opus/vo
 
 Works on Agda 2.6.2
 
-Missing 1 function, `scvPi-intro`.
+Implemented strongly computable values through a well-founded relation.

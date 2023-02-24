@@ -17,6 +17,7 @@ open import EvalSpec
 open import Stability
 open import TypeEval
 open import TermInfo
+open import SCVA
 open import EvaluatorSC
 
 private variable n : ℕ
@@ -26,80 +27,21 @@ abstract
   tyev∙[]TyP {p = p} = cong (_[ p ]T) tyev ∙ sym ⌜[]TyP⌝
   
 scvPi-intro : {Y : Con} {A : Ty n Y} {B : Ty n (Y , A)} {f : Val n Y (Pi A B)}
-           → ({X : Con} (a : Wk X Y) {v : Val n X (A [ ⌜ a ⌝Wk ]T)} → scv v
-           → Σ[ C ∈ Ty n X ] Σ[ fv ∈ Val n X C ] apply (subst (Val _ _) Pi[] (f [ a ]Val)) v fv × scv fv)
-           → scv f
-scvPi-intro {n} {Y} {A} {B} {f} fn a v sv with fn a {subst (Val _ _) (sym tyev∙[]TyP) v} sv'
-  where P : v ⟦ Val _ _ ⟧ (subst (Val _ _) tyev (subst (Val _ _) (sym (tyev∙[]TyP {A = A} {p = ⌜ a ⌝Wk})) v))
-        sv' = transport (λ i → scvP (hcollapse P (dcong ⌜_⌝TyP (path ⌜[]ev⌝)) i)) sv
-... | (C , w , afw , sw) = {!evsk!} , {!!} , {!!} , {!!}
-  where v' = subst (Val _ _) (sym tyev∙[]TyP) v
-        C≡B' : C ≡ B [ ⌜ a ⌝Wk ↑ A ]T [ < ⌜ v' ⌝Val > ]T
-        C≡B' = sym (type (apply≡ afw))
-        skC≡skB : evsk C ≡ evsk B
-        skC≡skB = {!dcong evsk C≡B'!}
+           → ({X : Con} (a : Wk X Y) {v : Val n X (A [ ⌜ a ⌝Wk ]T)} → scv _ v
+           → Σ[ fv ∈ Val n X (B [ ⌜ a ⌝Wk , ⌜ v ⌝Val ]T) ] apply (subst (Val _ _) Pi[] (f [ a ]Val)) v fv × scv _ fv)
+           → scv _ f
+scvPi-intro {n} {Y} {A} {B} {f} H = scv-mk-Pi f λ a v sv → H a sv 
 
-scvPi-elim : {Y : Con} {A : Ty n Y} {B : Ty n (Y , A)} {f : Val n Y (Pi A B)} → scv f
-          → {X : Con} (a : Wk X Y) {v : Val n X (A [ ⌜ a ⌝Wk ]T)} → scv v
-          → Σ[ C ∈ Ty n X ] Σ[ fv ∈ Val _ X C ] (apply (subst (Val _ _) Pi[] (f [ a ]Val)) v fv) × scv fv
-scvPi-elim {n} {Y} {A} {B} {f} sf {X} a {v} sv with sf a (subst (Val _ _) tyev∙[]TyP v) sv'
-  where abstract
-          Q : (subst (Val _ _) tyev v) ⟦ Val _ _ ⟧ subst (Val _ _) tyev∙[]TyP v
-          Q = subst (Val _ _) tyev v
-              ⟮ ‼ sym (subst-filler (Val _ _) tyev v) ⟯
-              v
-              ⟮ ‼ subst-filler (Val _ _) tyev∙[]TyP v ⟯
-              subst (Val _ _) tyev∙[]TyP v □
-          R : ev (A [ ⌜ a ⌝Wk ]T) ⟦ (λ i → TyP i _ _) ⟧ ev A [ ⌜ a ⌝Wk ]TyP
-          R = hsym (⌜[]ev⌝ {A = A} {p = ⌜ a ⌝Wk})
-        sv' = (transport (λ i → scvP (hcollapse Q (dcong ⌜_⌝TyP (hcollapse R (type R))) i)) sv)
-... | (C , w , afv , sw) = ⌜ C ⌝TyP , w , afv' , sw'
-  where X1 = (subst (Val _ _) Pi[] (subst (Val n Y) tyev f [ a ]Val))
-        X2 = (subst (Val _ _) Pi[] (f [ a ]Val))
-        v' = subst (Val _ _) ⌜[]TyP⌝ (subst (Val _ _) tyev∙[]TyP v)
-        abstract
-          X1≡X2 : X1 ⟦ Val _ _ ⟧ X2
-          X1≡X2 = X1
-                  ⟮ ‼ sym (subst-filler (Val _ _) Pi[] (subst (Val n Y) tyev f [ a ]Val)) ⟯
-                  (subst (Val n Y) tyev f [ a ]Val)
-                  ⟮ ‼ dcong (_[ a ]Val) (sym (subst-filler (Val n Y) tyev f)) ⟯
-                  f [ a ]Val
-                  ⟮ ‼ subst-filler (Val _ _) Pi[] (f [ a ]Val) ⟯
-                  X2 □
-          v'≡v : v' ⟦ Val _ _ ⟧ v
-          v'≡v = v'
-                 ⟮ ‼ sym (subst-filler (Val _ _) ⌜[]TyP⌝ (subst (Val _ _) tyev∙[]TyP v)) ⟯
-                 (subst (Val n X) tyev∙[]TyP v)
-                 ⟮ ‼ sym (subst-filler (Val _ _) tyev∙[]TyP v) ⟯
-                 v □
-        QS : Σ[ S ∈ TySk ] TyP S n (Y , ⌜ fst (evalT* A) ⌝TyS)
-        QS = TyS→TyP (subst (λ i → TyS n (Y , i)) (evalT≡ (snd (evalT* A))) (fst (evalT* B)))
-        S1 : ⌜ (subst (λ i → TyP (fst QS) n (Y , ⌜ i ⌝TyS)) TyS→TyP≡ (snd QS)) ⌝TyP ⟦ Ty _ ⟧ B
-        S1 = ⌜ (subst (λ i → TyP (fst QS) n (Y , ⌜ i ⌝TyS)) TyS→TyP≡ (snd QS)) ⌝TyP
-             ⟮ ‼ dcong ⌜_⌝TyP (sym (subst-filler (λ i → TyP (fst QS) n (Y , ⌜ i ⌝TyS)) TyS→TyP≡ (snd QS))) ⟯
-             ⌜ snd QS ⌝TyP
-             ⟮ ‼ dcong (λ i → ⌜ snd (TyS→TyP i) ⌝TyP) (sym (subst-filler (λ i → TyS n (Y , i)) (evalT≡ (snd (evalT* A))) (fst (evalT* B)))) ⟯
-             ⌜ ev B ⌝TyP
-             ⟮ ‼ sym tyev ⟯
-             B □
-        S : ⌜ (subst (λ i → TyP (fst QS) n (Y , ⌜ i ⌝TyS)) TyS→TyP≡ (snd QS)) ⌝TyP [ ⌜ a ⌝Wk ↑ ⌜ ev A ⌝TyP ]T ⟦ Ty _ ⟧ B [ ⌜ a ⌝Wk ↑ A ]T
-        S = pathh (cong (λ i → (X Con., (i [ ⌜ a ⌝Wk ]T))) (sym tyev))
-                  (λ k → (hcollapse S1 (cong (Y Con.,_) (sym tyev)) k) term.[ ⌜ a ⌝Wk ↑ (sym (tyev {A = A}) k) ]T)
-        afv' : apply X2 v w
-        afv' = transport (λ i → apply (hcollapse X1≡X2 (dcong₂ term.Pi (cong (_[ ⌜ a ⌝Wk ]T) (sym tyev)) (hcollapse S (cong (λ i → (X Con., (i [ ⌜ a ⌝Wk ]T))) (sym (tyev))))) i)
-                                       (hcollapse v'≡v (cong (_[ ⌜ a ⌝Wk ]T) (sym tyev)) i) w) afv
-        sw'' : scvP {A = C} w
-        sw'' = sw
-        w≡w' : w ⟦ Val _ _ ⟧ subst (Val _ _) tyev w
-        w≡w' = ‼ subst-filler (Val _ _) tyev w
-        Z : C ⟦ (λ i → TyP i _ _) ⟧ ev ⌜ C ⌝TyP
-        Z = evty
-        sw' : scvP {A = ev ⌜ C ⌝TyP} (subst (Val _ _) tyev w)
-        sw' = transport (λ i → scvP (hcollapse w≡w' (dcong ⌜_⌝TyP (hcollapse Z (type Z))) i)) sw
+scvPi-elim : {Y : Con} {A : Ty n Y} {B : Ty n (Y , A)} {f : Val n Y (Pi A B)} → scv _ f
+          → {X : Con} (a : Wk X Y) {v : Val n X (A [ ⌜ a ⌝Wk ]T)} → scv _ v
+          → Σ[ C ∈ Ty n X ] Σ[ fv ∈ Val _ X C ] (apply (subst (Val _ _) Pi[] (f [ a ]Val)) v fv) × scv _ fv
+scvPi-elim {n} {Y} {A} {B} {f} sf {X} a {v} sv with scv-access-Pi f sf a v sv
+... | (w , afv , sfv) = _ , w , afv , sfv
+
 
 scv-eval : {X Y : Con} {A : Ty n X}
         → (u : Tm n X A) → (p : Env Y X) → sce p
-        → Σ[ B ∈ Ty n Y ] Σ[ v ∈ Val n Y B ] (eval u p v) × scv v
+        → Σ[ B ∈ Ty n Y ] Σ[ v ∈ Val n Y B ] (eval u p v) × scv _ v
 sce-evals : {X Y Z : Con} (p : Tms Y Z) (s : Env X Y) → sce s
          → Σ[ v ∈ Env X Z ] evals p s v × sce v
 
@@ -107,7 +49,7 @@ open import Proposition
 
 scv-evalᴹ : Motives
 Motives.Tmsᴹ scv-evalᴹ {Y} {Z} p = {X : Con} (s : Env X Y) → sce s → Σ[ v ∈ Env X Z ] evals p s v × sce v
-Motives.Tmᴹ scv-evalᴹ {n} {Y} {A} u = {X : Con} (p : Env X Y) → sce p → Σ[ B ∈ Ty n X ] Σ[ v ∈ Val n X B ] (eval u p v) × scv v
+Motives.Tmᴹ scv-evalᴹ {n} {Y} {A} u = {X : Con} (p : Env X Y) → sce p → Σ[ B ∈ Ty n X ] Σ[ v ∈ Val n X B ] (eval u p v) × scv _ v
 Motives.Tyᴹ scv-evalᴹ A = ⊤
 
 scv-evalᴿ : Methods scv-evalᴹ
@@ -127,7 +69,7 @@ Methods._,ᴹ_ scv-evalᴿ {A = A} {p} {u} fp fu s ss = let
   P : B ≡ A [ ⌜ p' ⌝Env ]T
   P = evals,-aux p'e u'e
   u'' = tr (Val _ _) P u'
-  su'' = transport (λ i → scv (trfill (Val _ _) P u' i)) su'
+  su'' = transport (λ i → scv _ (trfill (Val _ _) P u' i)) su'
   in env (p' , u'') , evals, p'e u'e , sp' , su''
 Methods.π₁ᴹ scv-evalᴿ fp s ss with fp s ss
 ... | env (p , x) , p'e , (sp , sx) = p , evalsπ₁ p'e , sp
@@ -140,15 +82,15 @@ Methods._[_]ᴹ scv-evalᴿ fu fp s ss = let
 Methods.lamᴹ scv-evalᴿ {A = A} {B} {u} fu p sp = let
   lup = lam u p
   lup' = subst (Val _ _) Pi[] lup
-  slup' : scv lup'
+  slup' : scv _ lup'
   slup' = scvPi-intro {f = lup'} λ a {v} sv → let
             P : A [ ⌜ p ⌝Env ]T [ ⌜ a ⌝Wk ]T ≡ A [ ⌜ p [ a ]Env ⌝Env ]T
             P = sym [[]Env]
             v' : Val _ _ (A [ ⌜ p [ a ]Env ⌝Env ]T)
             v' = subst (Val _ _) P v
             v≡v' = subst-filler (Val _ _) P v
-            sv' : scv v'
-            sv' = transport (λ i → scv (v≡v' i)) sv
+            sv' : scv _ v'
+            sv' = transport (λ i → scv _ (v≡v' i)) sv
             (C , upv , eupv , supv) = fu (env (p [ a ]Env , v')) (sp [ a ]sce , sv')
             Q : B [ ⌜ p ⌝Env ↑ A ]T [ ⌜ a ⌝Wk ↑ (A [ ⌜ p ⌝Env ]T) ]T
                 ⟦ Ty _ ⟧
@@ -179,10 +121,29 @@ Methods.lamᴹ scv-evalᴿ {A = A} {B} {u} fu p sp = let
             aupv = lam eupv
             aupv' = apply lup+' v upv
             aupv' = transport (λ i → apply (hcollapse lup+≡lup+' R i) (v≡v' (~ i)) upv) aupv
-            in C , upv , aupv' , supv
+            eva : C ≡ B [ ⌜ p [ a ]Env ⌝Env , ⌜ subst (Val _ _) (sym [[]Env]) v ⌝Val ]T
+            eva = type (eval≡ eupv)
+            v'≡v : ⌜ subst (Val _ _) (sym [[]Env]) v ⌝Val ⟦ Tm _ _ ⟧ subst (Tm _ _) (sym [∘]T) ⌜ v ⌝Val
+            v'≡v = ‼ dcong ⌜_⌝Val (sym (subst-filler (Val _ _) (sym [[]Env]) v))
+                 ● ‼ subst-filler (Tm _ _) (sym [∘]T) ⌜ v ⌝Val
+            eva' : C ⟦ Ty _ ⟧ B [ (⌜ p ⌝Env ↑ A) ]T [ ⌜ a ⌝Wk , ⌜ v ⌝Val ]T
+            eva' = C
+                   ⟮ ‼ eva ⟯
+                   B [ ⌜ p [ a ]Env ⌝Env , ⌜ subst (Val _ _) (sym [[]Env]) v ⌝Val ]T
+                   ⟮ ‼ dcong₂ (λ i j → B [ i , j ]T) ⌜[]Env⌝ (hcollapse v'≡v (cong (A [_]T) ⌜[]Env⌝)) ⟯
+                   B [ (⌜ p ⌝Env ∘t ⌜ a ⌝Wk) , subst (Tm _ _) (sym [∘]T) ⌜ v ⌝Val ]T
+                   ⟮ ‼ cong (B [_]T) (sym (↑∘, {u = ⌜ v ⌝Val})) ⟯
+                   B [ (⌜ p ⌝Env ↑ A) ∘t (⌜ a ⌝Wk , ⌜ v ⌝Val) ]T
+                   ⟮ ‼ [∘]T ⟯
+                   B [ ⌜ p ⌝Env ↑ A ]T [ ⌜ a ⌝Wk , ⌜ v ⌝Val ]T □
+            in subst (Val _ _) (hmerge eva') upv
+             , transport (λ i → apply (subst (Val _ _) Pi[] (subst (Val _ _) Pi[] (lam u p) [ a ]Val))
+                                        v
+                                        (subst-filler (Val _ _) (hmerge eva') upv i)) aupv'
+             , transport (λ i → scv (hmerge eva' i) (subst-filler (Val _ _) (hmerge eva') upv i)) supv
          
-  slup : scv lup
-  slup = transport (λ i → scv (subst-filler (Val _ _) Pi[] lup (~ i))) slup'
+  slup : scv _ lup
+  slup = transport (λ i → scv _ (subst-filler (Val _ _) Pi[] lup (~ i))) slup'
   in _ , lup , evallam , slup
 Methods.appᴹ scv-evalᴿ {A = A} {B} {f} fx (env (s , v)) (ss , sv) = let
   (C , fp , efp , sfp) = fx s ss
@@ -195,7 +156,7 @@ Methods.appᴹ scv-evalᴿ {A = A} {B} {f} fx (env (s , v)) (ss , sv) = let
   fp' = subst (Val _ _) P fp
   fp≡fp' = subst-filler (Val _ _) P fp
   efp' = transport (λ i → eval f s (fp≡fp' i)) efp
-  sfp' = transport (λ i → scv (fp≡fp' i)) sfp
+  sfp' = transport (λ i → scv _ (fp≡fp' i)) sfp
   Q : A [ ⌜ s ⌝Env ]T ≡ A [ ⌜ s ⌝Env ]T [ ⌜ idwk ⌝Wk ]T
   Q = A [ ⌜ s ⌝Env ]T
       ≡⟨ sym [id]T ⟩
@@ -204,7 +165,7 @@ Methods.appᴹ scv-evalᴿ {A = A} {B} {f} fx (env (s , v)) (ss , sv) = let
       (A [ ⌜ s ⌝Env ]T) [ ⌜ idwk ⌝Wk ]T ∎
   v' = subst (Val _ _) Q v
   v≡v' = subst-filler (Val _ _) Q v
-  sv' = transport (λ i → scv (v≡v' i)) sv
+  sv' = transport (λ i → scv _ (v≡v' i)) sv
   D , fpv , afpv , sfpv = scvPi-elim {f = fp'} sfp' idwk {v = v'} sv'
   fp'' = subst (Val _ _) Pi[] (fp' [ idwk ]Val)
   R : B [ ⌜ s ⌝Env ↑ A ]T ⟦ Ty _ ⟧ B [ ⌜ s ⌝Env ↑ A ]T [ ⌜ idwk ⌝Wk ↑ _ ]T
